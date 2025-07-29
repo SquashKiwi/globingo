@@ -29,24 +29,34 @@ class _StatsPageState extends ConsumerState<StatsPage>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
+    // Initialize animations
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(_animationController);
     
     _slideAnimation = Tween<double>(
       begin: 50.0,
       end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(_animationController);
     
+    // Load data and start animation
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get visited countries
+    final visitedCountries = ref.read(visitedCountriesNotifierProvider);
+    // Update unlocked achievements
+    _unlockedAchievements = AchievementService.checkUnlockedAchievements(
+      visitedCountries,
+      _allCountries
+    );
+    // Calculate regional stats
+    _calculateStats();
   }
 
   @override
@@ -58,35 +68,49 @@ class _StatsPageState extends ConsumerState<StatsPage>
   Future<void> _loadData() async {
     final countries = await CountryDataService.getAllCountries();
     
-    setState(() {
-      _allCountries = countries;
-    });
-    
-    _calculateStats();
-    _animationController.forward();
+    if (mounted) {
+      setState(() {
+        _allCountries = countries;
+      });
+      
+      // Now that countries are loaded, calculate stats
+      _calculateStats();
+      _animationController.forward();
+    }
   }
 
   void _calculateStats() {
+    if (_allCountries.isEmpty) return; // Guard against empty countries
+    
     final visitedCountries = ref.read(visitedCountriesNotifierProvider);
     final categories = CountryDataService.getRegionCategories();
     final regionalStats = <String, int>{};
     
+    // Initialize all regions to 0 first
     for (final category in categories.keys) {
-      final countriesInCategory = _allCountries.where((country) {
-        return country['region'] == category;
-      }).length;
+      regionalStats[category] = 0;
+    }
+
+    // Count visited countries by region
+    for (final visitedCode in visitedCountries) {
+      final country = _allCountries.firstWhere(
+        (country) => country['code'].toString().toLowerCase() == visitedCode.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
       
-      final visitedInCategory = _allCountries.where((country) {
-        final countryCode = country['code'].toString().toLowerCase();
-        return country['region'] == category && 
-               visitedCountries.map((code) => code.toLowerCase()).contains(countryCode);
-      }).length;
-      
-      regionalStats[category] = visitedInCategory;
+      if (country.isNotEmpty) {
+        final region = country['region'] as String;
+        regionalStats[region] = (regionalStats[region] ?? 0) + 1;
+      }
     }
     
     setState(() {
       _regionalStats = regionalStats;
+      // Also update achievements here since we have the data
+      _unlockedAchievements = AchievementService.checkUnlockedAchievements(
+        visitedCountries,
+        _allCountries
+      );
     });
   }
 
@@ -380,8 +404,14 @@ class _StatsPageState extends ConsumerState<StatsPage>
           ..._regionalStats.entries.map((entry) {
             final region = entry.key;
             final visitedCount = entry.value;
-            final totalInRegion = _allCountries.where((country) => country['region'] == region).length;
-            final percentage = totalInRegion > 0 ? (visitedCount / totalInRegion * 100) : 0.0;
+            // Calculate total countries in region
+            final totalInRegion = _allCountries
+              .where((country) => country['region'] == region)
+              .length;
+            // Calculate percentage with null check
+            final percentage = totalInRegion > 0 
+              ? (visitedCount / totalInRegion * 100) 
+              : 0.0;
             
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -611,4 +641,4 @@ class _StatsPageState extends ConsumerState<StatsPage>
       ),
     );
   }
-} 
+}
