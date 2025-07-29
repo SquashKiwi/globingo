@@ -1,16 +1,6 @@
-# globingo
+# Globingo
+## A gamified trip tracker
 
-A new Flutter project.
+Globingo is a gamified trip tracker that rewards users for exploring new places. The user can earn achievements for each new place they visit.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Globingo is a lighter, faster version of the time Travel Page from [Trippy](https://trippy-61ae0.web.app/).
